@@ -1,6 +1,6 @@
 {
   "name": "fis3-parser-san-component",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "fis3 san component parser",
   "main": "index.js",
   "scripts": {
@@ -21,6 +21,11 @@
   },
   "homepage": "https://github.com/hefangshi/fis3-parser-san-component#readme",
   "dependencies": {
-    "san-loader": "0.0.4"
+    "san-loader": "0.0.7",
+    "postcss": "^6.0.13",
+    "postcss-selector-parser": "^3.1.0",
+    "lru-cache": "^4.0.1",
+    "parse5": "^3.0.2",
+    "deasync": "^0.1.11"
   }
 }
