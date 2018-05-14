@@ -3,17 +3,34 @@
  */
 
 /* global fis */
-
 var sanParser = require('san-loader/lib/parser');
+var templateReWriter = require('./lib/template-rewriter');
+var rewriteStyle = require('./lib/style-rewriter');
 
-module.exports = function (content, file) {
+module.exports = function (content, file, conf) {
+    var configs = Object.assign({
+        cssScopedIdPrefix: 'scp-',
+        cssScopedHashLength: 8
+    }, conf || {});
+
+    // 兼容content为buffer的情况
+    content = content.toString();
+
     var result = sanParser(content, file.subpath);
+
+    // check for scoped style nodes
+    var hasScopedStyle = result.style.some(function (style) {
+        return style.scoped
+    });
+    var scopeId = configs.cssScopedIdPrefix + fis.util.md5(file.subpath, configs.cssScopedHashLength);
+
+
     var output = 'var __san_script__, __san_template__\n' +
         'var san = require("san")\n';
     // script
     if (result.script && result.script.length != 0) {
         output += fis.compile.partial(result.script[0].content, file, {
-            ext: 'js',
+            ext: result.script[0].lang || 'js',
             isJsLike: true
         }) + '\n';
         output += 'if(exports && exports.__esModule && exports.default){\n';
@@ -26,14 +43,41 @@ module.exports = function (content, file) {
     }
     // template属性注入组件
     if (result.template && result.template.length != 0) {
-        output += '__san_script__.template=' + JSON.stringify(fis.compile.partial(result.template[0].content, file, {
-            ext: 'html',
+        var tpl = fis.compile.partial(result.template[0].content.trim(), file, {
+            ext: result.template[0].lang || 'html',
             isHtmlLike: true
-        })) + '\n';
+        });
+
+        if (hasScopedStyle) {
+            tpl = templateReWriter(tpl, scopeId);
+        }
+
+        output += '__san_script__.template=' + JSON.stringify(tpl) + '\n';
     }
+
+
     // css文件独立生成文件建立依赖关系
     result.style.forEach(function (item, index) {
-        var styleContent = item.content;
+
+        if(!item.content){
+            return;
+        }
+
+        // empty string, or all space line
+        if(/^\s*$/.test(item.content)){
+            return;
+        }
+
+        // css也采用片段编译，更好的支持less、sass等其他语言
+        var styleContent = fis.compile.partial(item.content.trim(), file, {
+            ext: item.lang || 'css',
+            isCssLike: true
+        });
+
+        if (item.scoped) {
+            styleContent = rewriteStyle(scopeId, styleContent);
+        }
+
         var styleFileName, styleFile;
         if (result.style.length == 1) {
             styleFileName = file.realpathNoExt + '.css';
