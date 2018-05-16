@@ -9,6 +9,7 @@ var rewriteStyle = require('./lib/style-rewriter');
 
 module.exports = function (content, file, conf) {
     var configs = Object.assign({
+        sanRequirePath: 'san',
         cssScopedIdPrefix: 'scp-',
         cssScopedHashLength: 8
     }, conf || {});
@@ -26,7 +27,7 @@ module.exports = function (content, file, conf) {
 
 
     var output = 'var __san_script__, __san_template__\n' +
-        'var san = require("san")\n';
+        'var san = require("' + configs.sanRequirePath + '")\n';
     // script
     if (result.script && result.script.length != 0) {
         output += fis.compile.partial(result.script[0].content, file, {
